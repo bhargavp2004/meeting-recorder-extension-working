@@ -11,7 +11,7 @@
   "background": {
     "service_worker": "service-worker.js"
   },
-  "permissions": ["tabCapture", "offscreen", "activeTab"],
+  "permissions": ["tabCapture", "offscreen", "activeTab", "storage", "tabs", "desktopCapture"],
   "host_permissions": ["*://*/*"],
   "web_accessible_resources": [
     {

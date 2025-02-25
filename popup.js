@@ -124,14 +124,14 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   // Logout button handler
   logoutButton.addEventListener("click", async () => {
-    try{
+    try {
       await fetch("http://localhost:3000/logout", {
-        method: "POST",
+        method: "GET",
         credentials: "include",
       });
       updateUI();
     }
-    catch(error){
+    catch (error) {
       console.log(error);
     }
   });
@@ -144,14 +144,11 @@ document.addEventListener("DOMContentLoaded", async () => {
         currentWindow: true,
       });
 
-      if (
-        !tab ||
-        tab.url.startsWith("chrome://") ||
-        tab.url.startsWith("chrome-extension://")
-      ) {
-        alert(
-          "Cannot record Chrome system pages. Please try on a regular webpage."
-        );
+      const meetRegex = /^https:\/\/meet\.google\.com\/[a-z]{3}-[a-z]{4}-[a-z]{3}$/;
+      const zoomRegex = /zoom\.us\/(j|my)\/\d+/;
+
+      if (!tab || !meetRegex.test(tab.url) && !zoomRegex.test(tab.url)) {
+        alert("Please open a Google Meet or Zoom tab to record");
         return;
       }
 

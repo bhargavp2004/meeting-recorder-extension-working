@@ -1,75 +1,3 @@
-<!-- <!DOCTYPE html>
-<html>
-  <head>
-    <style>
-      body {
-        width: 200px;
-        padding: 10px;
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-      }
-
-      button {
-        padding: 10px;
-        font-size: 14px;
-        cursor: pointer;
-        border: none;
-        border-radius: 4px;
-        width: 100%;
-        opacity: 0; /* Start with 0 opacity */
-        transition: opacity 0.3s ease-in-out; /* Smooth transition for opacity */
-        position: absolute; /* Prevent layout shifting */
-      }
-
-      #startRecord {
-        background: #4caf50;
-        color: white;
-        display: none;
-      }
-
-      #stopRecord {
-        background: #f44336;
-        color: white;
-        display: none;
-      }
-
-      /* New class for visible buttons */
-      button.visible {
-        opacity: 1;
-      }
-
-      /* Add a container for the buttons to maintain layout */
-      .button-container {
-        position: relative;
-        height: 38px; /* Height of your buttons */
-        margin: 10px 0;
-      }
-
-      button:disabled {
-        opacity: 0.6;
-        cursor: not-allowed;
-      }
-      #permissionStatus {
-        margin: 10px 0;
-        padding: 10px;
-        border-radius: 4px;
-        display: none;
-        background-color: #fff3e0;
-        color: #ef6c00;
-      }
-    </style>
-  </head>
-  <body>
-    <div id="permissionStatus"></div>
-    <div class="button-container">
-      <button id="startRecord">Start Recording</button>
-      <button id="stopRecord">Stop Recording</button>
-    </div>
-    <script src="popup.js"></script>
-  </body>
-</html> -->
-
 <!DOCTYPE html>
 <html>
 
@@ -120,8 +48,8 @@
       transition: background 0.3s ease-in-out, opacity 0.3s ease-in-out;
     }
 
-    #loginButton {
-      background: #2196f3;
+    .SubmitButton {
+      background: #005eab;
       color: white;
     }
 
@@ -167,6 +95,7 @@
     }
 
     #loginError,
+    #registerError,
     #permissionStatus {
       display: none;
       color: red;
@@ -179,7 +108,7 @@
       display: none;
     }
 
-    .visible{
+    .visible {
       display: block;
     }
   </style>
@@ -198,8 +127,25 @@
     </div>
     <p id="loginError"></p>
     <div class="button-container">
-      <button type="submit" id="loginButton">Login</button>
+      <button type="submit" id="loginButton" class="SubmitButton">Login</button>
     </div>
+    <button id="navigateToRegister" class="btn mt-3" style="background-color:inherit; text-decoration:underline">Don't
+      have an account ?</button>
+  </div>
+
+  <!-- Register Container -->
+  <div id="registerContainer" class="container">
+    <h2>Register</h2>
+    <div class="input-container">
+      <input type="email" id="regemail" placeholder="Enter email">
+      <input type="password" id="regpassword" placeholder="Enter password">
+    </div>
+    <p id="registerError" class="mt-3"></p>
+    <div class="button-container">
+      <button type="submit" id="registerButton" class="SubmitButton mt-3">Register</button>
+    </div>
+    <button id="navigateToLogin" class="btn mt-3" style="background-color:inherit; text-decoration:underline">Already
+      have an account ?</button>
   </div>
 
   <!-- Recording Container -->

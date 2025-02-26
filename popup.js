@@ -10,6 +10,13 @@ const passwordInput = document.getElementById("password");
 const loginButton = document.getElementById("loginButton");
 const loginError = document.getElementById("loginError");
 const logoutButton = document.getElementById("logoutButton");
+const navigateToRegisterButton = document.getElementById("navigateToRegister");
+const navigateToLoginButton = document.getElementById("navigateToLogin");
+const registerButton = document.getElementById("registerButton");
+const registerContainer = document.getElementById("registerContainer");
+const registerError = document.getElementById("registerError");
+const registerEmailInput = document.getElementById("regemail");
+const registerPasswordInput = document.getElementById("regpassword");
 let permissionStatus = document.getElementById("permissionStatus");
 
 async function checkAuth() {
@@ -31,10 +38,12 @@ async function updateUI() {
   if (isAuthenticated) {
     loginContainer.style.display = "none";
     recordingContainer.style.display = "block";
+    registerContainer.style.display = "none";
     startButton.style.display = "block";
   } else {
     loginContainer.style.display = "block";
     recordingContainer.style.display = "none";
+    registerContainer.style.display = "none";
   }
 }
 
@@ -85,6 +94,52 @@ async function checkRecordingState() {
 
 document.addEventListener("DOMContentLoaded", async () => {
   await checkRecordingState();
+
+  navigateToRegisterButton.addEventListener("click", () => {
+    loginContainer.style.display = "none";
+    recordingContainer.style.display = "none";
+    registerContainer.style.display = "block";
+  });
+
+  navigateToLoginButton.addEventListener("click", () => {
+    loginContainer.style.display = "block";
+    recordingContainer.style.display = "none";
+    registerContainer.style.display = "none";
+  });
+
+  // Register button handler
+  registerButton.addEventListener("click", async () => {
+    const email = registerEmailInput.value;
+    const password = registerPasswordInput.value;
+
+    if (!email || !password) {
+      registerError.textContent = "Please enter both email and password";
+      registerError.style.display = "block";
+      return;
+    }
+
+    try {
+      const response = await fetch("http://localhost:3000/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        updateUI();
+        checkRecordingState();
+      } else {
+        registerError.textContent = data.message;
+        registerError.style.display = "block";
+      }
+    } catch (error) {
+      registerError.textContent = "Network error, try again later";
+      registerError.style.display = "block";
+    }
+  });
 
   // Login button handler
   loginButton.addEventListener("click", async () => {

@@ -1,6 +1,7 @@
 let recorder;
 let data = [];
 let activeStreams = [];
+let meetingId;
 
 chrome.runtime.onMessage.addListener(async (message) => {
   if (message.target === "offscreen") {
@@ -38,10 +39,10 @@ async function startRecording(options = {}) {
     });
 
     activeStreams.push(screenStream);
-    
+
     let micStream = null;
     let combinedStream;
-    
+
     // Only get microphone if enabled
     if (options?.microphone !== false) {
       try {
@@ -72,14 +73,14 @@ async function startRecording(options = {}) {
         ...screenStream.getVideoTracks(),
         ...destination.stream.getAudioTracks(),
       ]);
-    } 
+    }
     // If we only have mic audio
     else if (micStream) {
       combinedStream = new MediaStream([
         ...screenStream.getVideoTracks(),
         ...micStream.getAudioTracks(),
       ]);
-    } 
+    }
     // If we only have system audio or no audio
     else {
       combinedStream = screenStream;
@@ -108,10 +109,13 @@ async function startRecording(options = {}) {
       const blob = new Blob(data, { type: "video/webm" });
       const file = new File([blob], "recording.webm", { type: "video/webm" });
 
-      // Download the video file
+      // Upload the video file to backend
       const videoUrl = URL.createObjectURL(blob);
-      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-      downloadFile(videoUrl, `recording-${timestamp}.webm`);
+      try {
+        await uploadVideo(file);
+      } catch (error) {
+        console.error("Error uploading video:", error);
+      }
 
       // Update status
       chrome.runtime.sendMessage({
@@ -125,18 +129,20 @@ async function startRecording(options = {}) {
         const transcript = await transcribeVideo(file);
         if (transcript) {
           console.log("Transcription completed");
-          
-          // Download the transcript
-          const transcriptBlob = new Blob([transcript], { type: "text/plain" });
-          const transcriptUrl = URL.createObjectURL(transcriptBlob);
-          downloadFile(transcriptUrl, `transcript-${timestamp}.txt`);
-          URL.revokeObjectURL(transcriptUrl);
-          
+
+          // Upload the transcript to backend
+          try {
+            const transcriptionFile = new Blob([transcript], { type: "text/plain" });
+            await uploadTranscription(transcriptionFile, meetingId);
+          } catch (error) {
+            console.error("Error uploading transcription:", error);
+          }
+
           // Update status
           chrome.runtime.sendMessage({
             type: 'transcription-status',
             target: 'service-worker',
-            status: 'Transcription completed and downloaded'
+            status: 'Transcription completed and uploaded'
           });
         } else {
           console.error("Transcription failed or returned empty text");
@@ -169,7 +175,7 @@ async function startRecording(options = {}) {
 
     // Start recording with 1-second chunks
     recorder.start(1000);
-    
+
     // Update hash to indicate recording state
     window.location.hash = "recording";
 
@@ -186,7 +192,7 @@ async function startRecording(options = {}) {
       target: "service-worker",
       error: error.message,
     });
-    
+
     await stopAllStreams();
   }
 }
@@ -244,7 +250,7 @@ async function transcribeVideo(file) {
     const audioUrl = uploadResult.upload_url;
 
     console.log("File uploaded, URL:", audioUrl);
-    
+
     // Update status
     chrome.runtime.sendMessage({
       type: 'transcription-status',
@@ -262,6 +268,8 @@ async function transcribeVideo(file) {
       body: JSON.stringify({ audio_url: audioUrl }),
     });
 
+    console.log("Transcript response : ", transcriptResponse);
+
     if (!transcriptResponse.ok) {
       throw new Error(`Transcription request failed with status: ${transcriptResponse.status}`);
     }
@@ -275,17 +283,17 @@ async function transcribeVideo(file) {
     let transcriptData;
     let attempts = 0;
     const maxAttempts = 60; // 5 minutes max (with 5-second intervals)
-    
+
     while (attempts < maxAttempts) {
       attempts++;
-      
+
       // Update status with progress
       chrome.runtime.sendMessage({
         type: 'transcription-status',
         target: 'service-worker',
         status: `Transcribing... (attempt ${attempts}/${maxAttempts})`
       });
-      
+
       const checkResponse = await fetch(`https://api.assemblyai.com/v2/transcript/${transcriptId}`, {
         headers: { Authorization: apiKey },
       });
@@ -302,11 +310,11 @@ async function transcribeVideo(file) {
 
       await new Promise((resolve) => setTimeout(resolve, 5000)); // Wait 5 seconds before checking again
     }
-    
+
     if (attempts >= maxAttempts) {
       throw new Error("Transcription timed out after 5 minutes");
     }
-    
+
     console.log("Transcription completed successfully!");
     return transcriptData.text;
   } catch (error) {
@@ -315,17 +323,41 @@ async function transcribeVideo(file) {
   }
 }
 
-// Function to download files
-function downloadFile(url, filename) {
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = filename;
-  link.style.display = "none";
-  document.body.appendChild(link);
-  link.click();
-  
-  // Small delay before removing the link
-  setTimeout(() => {
-    document.body.removeChild(link);
-  }, 100);
+async function uploadVideo(content) {
+  meetingId = undefined;
+  const formData = new FormData();
+  formData.append("video", content);
+  const response = await fetch('http://localhost:3000/media/upload-video', {
+    method: 'POST',
+    credentials: "include",
+    body: formData,
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to upload video with status: ${response.status}`);
+  }
+
+  const result = await response.json();
+  meetingId = result.meetingId;
+  console.log("Video uploaded successfully, meetingId:", meetingId);
+}
+
+async function uploadTranscription(content, meetingId) {
+  if (meetingId != undefined) {
+    const formData = new FormData();
+    const blob = new Blob([content], { type: "text/plain" });
+    formData.append("transcription", blob, "transcription.txt");
+    const response = await fetch(`http://localhost:3000/media/upload-transcription/${meetingId}`, {
+      method: 'POST',
+      credentials: "include",
+      body: formData,
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to upload transcription with status: ${response.status}`);
+    }
+
+    console.log("Transcription uploaded successfully");
+    meetingId = undefined;
+  }
 }

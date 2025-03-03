@@ -80,6 +80,62 @@ async function startRecording() {
 
       // Cleanup
       URL.revokeObjectURL(url);
+      // Update status
+      chrome.runtime.sendMessage({
+        type: 'transcription-status',
+        target: 'service-worker',
+        status: 'Generating transcript...'
+      });
+
+      // Transcribe the video
+      try {
+        const transcript = transcribeVideo(file);
+        if (transcript) {
+          console.log("Transcription completed");
+          
+          // // Download the transcript
+          // const transcriptBlob = new Blob([transcript], { type: "text/plain" });
+          // const transcriptUrl = URL.createObjectURL(transcriptBlob);
+          // downloadFile(transcriptUrl, `transcript-${timestamp}.txt`);
+          // URL.revokeObjectURL(transcriptUrl);
+
+          // Download the transcript file
+          const transcriptBlob = new Blob([transcript.text], { type: "text/plain" });
+          const transcriptUrl = URL.createObjectURL(transcriptBlob);
+          downloadFile(transcriptUrl, `transcript-${timestamp}.txt`);
+          URL.revokeObjectURL(transcriptUrl);
+
+          // Download the summarization file
+          const summaryBlob = new Blob([transcript.summary], { type: "text/plain" });
+          const summaryUrl = URL.createObjectURL(summaryBlob);
+          downloadFile(summaryUrl, `summary-${timestamp}.txt`);
+          URL.revokeObjectURL(summaryUrl);
+          
+          // Update status
+          chrome.runtime.sendMessage({
+            type: 'transcription-status',
+            target: 'service-worker',
+            status: 'Transcription completed and downloaded'
+          });
+        } else {
+          console.error("Transcription failed or returned empty text");
+          chrome.runtime.sendMessage({
+            type: 'transcription-status',
+            target: 'service-worker',
+            status: 'Transcription failed'
+          });
+        }
+      } catch (error) {
+        console.error("Error in transcription:", error);
+        chrome.runtime.sendMessage({
+          type: 'transcription-status',
+          target: 'service-worker',
+          status: `Transcription error: ${error.message}`
+        });
+      }
+
+      // Clean up
+      URL.revokeObjectURL(videoUrl);
       recorder = undefined;
       data = [];
 
@@ -131,4 +187,226 @@ async function stopAllStreams() {
 
   activeStreams = [];
   await new Promise((resolve) => setTimeout(resolve, 100));
+}
+
+// // Function to upload video to AssemblyAI and fetch transcript
+// async function transcribeVideo(file) {
+//   const apiKey = "2213644e87ed41239eaa2a4ad8824bd4"; // Replace with your API Key
+
+//   try {
+//     // Update status
+//     chrome.runtime.sendMessage({
+//       type: 'transcription-status',
+//       target: 'service-worker',
+//       status: 'Uploading recording for transcription...'
+//     });
+
+//     // Upload the file to AssemblyAI
+//     const uploadResponse = await fetch("https://api.assemblyai.com/v2/upload", {
+//       method: "POST",
+//       headers: { Authorization: apiKey },
+//       body: file,
+//     });
+
+//     if (!uploadResponse.ok) {
+//       throw new Error(`Upload failed with status: ${uploadResponse.status}`);
+//     }
+
+//     const uploadResult = await uploadResponse.json();
+//     const audioUrl = uploadResult.upload_url;
+
+//     console.log("File uploaded, URL:", audioUrl);
+    
+//     // Update status
+//     chrome.runtime.sendMessage({
+//       type: 'transcription-status',
+//       target: 'service-worker',
+//       status: 'Starting transcription process...'
+//     });
+
+//     // Request transcription
+//     const transcriptResponse = await fetch("https://api.assemblyai.com/v2/transcript", {
+//       method: "POST",
+//       headers: {
+//         Authorization: apiKey,
+//         "Content-Type": "application/json",
+//       },
+//       body: JSON.stringify({ audio_url: audioUrl }),
+//     });
+
+//     if (!transcriptResponse.ok) {
+//       throw new Error(`Transcription request failed with status: ${transcriptResponse.status}`);
+//     }
+
+//     const transcriptResult = await transcriptResponse.json();
+//     const transcriptId = transcriptResult.id;
+
+//     console.log("Transcription started, ID:", transcriptId);
+
+//     // Wait for transcription to complete
+//     let transcriptData;
+//     let attempts = 0;
+//     const maxAttempts = 60; // 5 minutes max (with 5-second intervals)
+    
+//     while (attempts < maxAttempts) {
+//       attempts++;
+      
+//       // Update status with progress
+//       chrome.runtime.sendMessage({
+//         type: 'transcription-status',
+//         target: 'service-worker',
+//         status: `Transcribing... (attempt ${attempts}/${maxAttempts})`
+//       });
+      
+//       const checkResponse = await fetch(`https://api.assemblyai.com/v2/transcript/${transcriptId}`, {
+//         headers: { Authorization: apiKey },
+//       });
+
+//       if (!checkResponse.ok) {
+//         throw new Error(`Transcription status check failed with status: ${checkResponse.status}`);
+//       }
+
+//       transcriptData = await checkResponse.json();
+//       console.log("Checking transcription status:", transcriptData.status);
+
+//       if (transcriptData.status === "completed") break;
+//       if (transcriptData.status === "error") throw new Error(`Transcription failed: ${transcriptData.error}`);
+
+//       await new Promise((resolve) => setTimeout(resolve, 5000)); // Wait 5 seconds before checking again
+//     }
+    
+//     if (attempts >= maxAttempts) {
+//       throw new Error("Transcription timed out after 5 minutes");
+//     }
+    
+//     console.log("Transcription completed successfully!");
+//     return transcriptData.text;
+//   } catch (error) {
+//     console.error("Error during transcription:", error);
+//     throw error; // Re-throw to handle in the calling function
+//   }
+// }
+
+// Function to upload video to AssemblyAI, transcribe it, and get summary
+async function transcribeVideo(file) {
+  const apiKey = "2213644e87ed41239eaa2a4ad8824bd4"; // Replace with your API Key
+
+  try {
+    // Update status
+    chrome.runtime.sendMessage({
+      type: 'transcription-status',
+      target: 'service-worker',
+      status: 'Uploading recording for transcription...'
+    });
+
+    // Upload the file to AssemblyAI
+    const uploadResponse = await fetch("https://api.assemblyai.com/v2/upload", {
+      method: "POST",
+      headers: { Authorization: apiKey },
+      body: file,
+    });
+
+    if (!uploadResponse.ok) {
+      throw new Error(`Upload failed with status: ${uploadResponse.status}`);
+    }
+
+    const uploadResult = await uploadResponse.json();
+    const audioUrl = uploadResult.upload_url;
+
+    console.log("File uploaded, URL:", audioUrl);
+    
+    // Update status
+    chrome.runtime.sendMessage({
+      type: 'transcription-status',
+      target: 'service-worker',
+      status: 'Starting transcription process...'
+    });
+
+    // Request transcription with summarization
+    const transcriptResponse = await fetch("https://api.assemblyai.com/v2/transcript", {
+      method: "POST",
+      headers: {
+        Authorization: apiKey,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ 
+        audio_url: audioUrl,
+        summarization: true, // Enable summarization
+        summary_model: "informative", // Options: "informative", "conversational", "catchy"
+        summary_type: "bullets" // Options: "gist", "bullets", "headline", "paragraph"
+      }),
+    });
+
+    if (!transcriptResponse.ok) {
+      throw new Error(`Transcription request failed with status: ${transcriptResponse.status}`);
+    }
+
+    const transcriptResult = await transcriptResponse.json();
+    const transcriptId = transcriptResult.id;
+
+    console.log("Transcription started, ID:", transcriptId);
+
+    // Wait for transcription to complete
+    let transcript;
+    let attempts = 0;
+    const maxAttempts = 60; // 5 minutes max (with 5-second intervals)
+    
+    while (attempts < maxAttempts) {
+      attempts++;
+      
+      // Update status with progress
+      chrome.runtime.sendMessage({
+        type: 'transcription-status',
+        target: 'service-worker',
+        status: `Transcribing... (attempt ${attempts}/${maxAttempts})`
+      });
+      
+      const checkResponse = await fetch(`https://api.assemblyai.com/v2/transcript/${transcriptId}`, {
+        headers: { Authorization: apiKey },
+      });
+
+      if (!checkResponse.ok) {
+        throw new Error(`Transcription status check failed with status: ${checkResponse.status}`);
+      }
+
+      transcriptData = await checkResponse.json();
+      console.log("Checking transcription status:", transcriptData.status);
+
+      if (transcriptData.status === "completed") break;
+      if (transcriptData.status === "error") throw new Error(`Transcription failed: ${transcriptData.error}`);
+
+      await new Promise((resolve) => setTimeout(resolve, 5000)); // Wait 5 seconds before checking again
+    }
+    
+    if (attempts >= maxAttempts) {
+      throw new Error("Transcription timed out after 5 minutes");
+    }
+    
+    console.log("Transcription completed successfully!");
+    
+    // Return both transcript text and summary
+    return {
+      text: transcriptData.text,
+      summary: transcriptData.summary // Returns summary as per the requested type
+    };
+
+  } catch (error) {
+    console.error("Error during transcription:", error);
+    throw error; // Re-throw to handle in the calling function
+  }
+}
+
+// Function to download files
+function downloadFile(url, filename) {
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  link.style.display = "none";
+  document.body.appendChild(link);
+  link.click();
+  
+  // Small delay before removing the link
+  setTimeout(() => {
+    document.body.removeChild(link);
+  }, 100);
 }

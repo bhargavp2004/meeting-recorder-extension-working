@@ -107,7 +107,9 @@ async function startRecording(options = {}) {
 
       // Create blob and file from recorded data
       const blob = new Blob(data, { type: "video/webm" });
-      const file = new File([blob], "recording.webm", { type: "video/webm" });
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      const fileName = `recording_${timestamp}.webm`;
+      const file = new File([blob], fileName, { type: "video/webm" });
 
       // Upload the video file to backend
       const videoUrl = URL.createObjectURL(blob);
@@ -126,14 +128,23 @@ async function startRecording(options = {}) {
 
       // Transcribe the video
       try {
-        const transcript = await transcribeVideo(file);
+        const transcriptResponse = await transcribeVideo(file);
+        const transcript = transcriptResponse.text;
+        const summary = transcriptResponse.summary;
+        console.log("Transcript:", transcript);
         if (transcript) {
           console.log("Transcription completed");
 
           // Upload the transcript to backend
           try {
+            const transcriptionFileName = `recording_${timestamp}.txt`;
             const transcriptionFile = new Blob([transcript], { type: "text/plain" });
-            await uploadTranscription(transcriptionFile, meetingId);
+            const transcriptionFileObject = new File([transcriptionFile], transcriptionFileName, { type: "text/plain" });
+            await uploadTranscription(transcriptionFileObject, meetingId);
+            const summaryFileName = `summary_${timestamp}.txt`;
+            const summaryFile = new File([summary], summaryFileName, { type: "text/plain" });
+            const summaryFileObject = new File([summaryFile], summaryFileName, { type: "text/plain" });
+            await uploadSummarization(summaryFileObject, meetingId);
           } catch (error) {
             console.error("Error uploading transcription:", error);
           }
@@ -265,7 +276,12 @@ async function transcribeVideo(file) {
         Authorization: apiKey,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ audio_url: audioUrl }),
+      body: JSON.stringify({
+        audio_url: audioUrl,
+        summarization: true, // Enable summarization
+        summary_model: "informative", // Options: "informative", "conversational", "catchy"
+        summary_type: "bullets"
+      }),
     });
 
     console.log("Transcript response : ", transcriptResponse);
@@ -303,6 +319,7 @@ async function transcribeVideo(file) {
       }
 
       transcriptData = await checkResponse.json();
+      console.log("Transcript data : ", transcriptData);
       console.log("Checking transcription status:", transcriptData.status);
 
       if (transcriptData.status === "completed") break;
@@ -316,7 +333,11 @@ async function transcribeVideo(file) {
     }
 
     console.log("Transcription completed successfully!");
-    return transcriptData.text;
+
+    return {
+      text: transcriptData.text,
+      summary: transcriptData.summary // Returns summary as per the requested type
+    };
   } catch (error) {
     console.error("Error during transcription:", error);
     throw error; // Re-throw to handle in the calling function
@@ -345,9 +366,27 @@ async function uploadVideo(content) {
 async function uploadTranscription(content, meetingId) {
   if (meetingId != undefined) {
     const formData = new FormData();
-    const blob = new Blob([content], { type: "text/plain" });
-    formData.append("transcription", blob, "transcription.txt");
+    formData.append("transcription", content);
     const response = await fetch(`http://localhost:3000/media/upload-transcription/${meetingId}`, {
+      method: 'POST',
+      credentials: "include",
+      body: formData,
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to upload transcription with status: ${response.status}`);
+    }
+
+    console.log("Transcription uploaded successfully");
+    meetingId = undefined;
+  }
+}
+
+async function uploadSummarization(content, meetingId) {
+  if (meetingId != undefined) {
+    const formData = new FormData();
+    formData.append("summarization", content);
+    const response = await fetch(`http://localhost:3000/media/upload-summarization/${meetingId}`, {
       method: 'POST',
       credentials: "include",
       body: formData,

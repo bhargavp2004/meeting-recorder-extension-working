@@ -2,6 +2,7 @@ let recorder;
 let data = [];
 let activeStreams = [];
 let meetingId;
+let videoTitle;
 
 chrome.runtime.onMessage.addListener(async (message) => {
   if (message.target === "offscreen") {
@@ -10,7 +11,7 @@ chrome.runtime.onMessage.addListener(async (message) => {
         startRecording(message.options);
         break;
       case "stop-recording":
-        stopRecording();
+        stopRecording(message.data?.title);
         break;
       default:
         console.error("Unrecognized message:", message.type);
@@ -108,7 +109,7 @@ async function startRecording(options = {}) {
       // Create blob and file from recorded data
       const blob = new Blob(data, { type: "video/webm" });
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-      const fileName = `recording_${timestamp}.webm`;
+      const fileName = `${videoTitle}.webm`;
       const file = new File([blob], fileName, { type: "video/webm" });
 
       // Upload the video file to backend
@@ -137,11 +138,11 @@ async function startRecording(options = {}) {
 
           // Upload the transcript to backend
           try {
-            const transcriptionFileName = `recording_${timestamp}.txt`;
+            const transcriptionFileName = `recording_${videoTitle}.txt`;
             const transcriptionFile = new Blob([transcript], { type: "text/plain" });
             const transcriptionFileObject = new File([transcriptionFile], transcriptionFileName, { type: "text/plain" });
             await uploadTranscription(transcriptionFileObject, meetingId);
-            const summaryFileName = `summary_${timestamp}.txt`;
+            const summaryFileName = `summary_${videoTitle}.txt`;
             const summaryFile = new File([summary], summaryFileName, { type: "text/plain" });
             const summaryFileObject = new File([summaryFile], summaryFileName, { type: "text/plain" });
             await uploadSummarization(summaryFileObject, meetingId);
@@ -176,6 +177,7 @@ async function startRecording(options = {}) {
       URL.revokeObjectURL(videoUrl);
       recorder = undefined;
       data = [];
+      videoTitle = undefined;
 
       // Notify that recording has stopped
       chrome.runtime.sendMessage({
@@ -208,7 +210,8 @@ async function startRecording(options = {}) {
   }
 }
 
-async function stopRecording() {
+async function stopRecording(title) {
+  videoTitle = title;
   if (recorder && recorder.state === "recording") {
     recorder.stop();
   }
@@ -348,6 +351,7 @@ async function uploadVideo(content) {
   meetingId = undefined;
   const formData = new FormData();
   formData.append("video", content);
+  formData.append("title", videoTitle);
   const response = await fetch('http://localhost:3000/media/upload-video', {
     method: 'POST',
     credentials: "include",

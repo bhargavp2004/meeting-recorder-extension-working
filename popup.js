@@ -15,8 +15,13 @@ const navigateToLoginButton = document.getElementById("navigateToLogin");
 const registerButton = document.getElementById("registerButton");
 const registerContainer = document.getElementById("registerContainer");
 const registerError = document.getElementById("registerError");
+const registerUserInput = document.getElementById("reguser");
 const registerEmailInput = document.getElementById("regemail");
 const registerPasswordInput = document.getElementById("regpassword");
+const videoTitleContainer = document.getElementById("videoTitleContainer");
+const videoTitleInput = document.getElementById("videoTitleInput");
+const videoTitleInputError = document.getElementById("videoTitleInputError");
+const videoTitleButton = document.getElementById("videoTitleButton");
 let permissionStatus = document.getElementById("permissionStatus");
 
 async function checkAuth() {
@@ -40,10 +45,12 @@ async function updateUI() {
     recordingContainer.style.display = "block";
     registerContainer.style.display = "none";
     startButton.style.display = "block";
+    videoTitleContainer.style.display = "none";
   } else {
     loginContainer.style.display = "block";
     recordingContainer.style.display = "none";
     registerContainer.style.display = "none";
+    videoTitleContainer.style.display = "none";
   }
 }
 
@@ -99,21 +106,24 @@ document.addEventListener("DOMContentLoaded", async () => {
     loginContainer.style.display = "none";
     recordingContainer.style.display = "none";
     registerContainer.style.display = "block";
+    videoTitleContainer.style.display = "none";
   });
 
   navigateToLoginButton.addEventListener("click", () => {
     loginContainer.style.display = "block";
     recordingContainer.style.display = "none";
     registerContainer.style.display = "none";
+    videoTitleContainer.style.display = "none";
   });
 
   // Register button handler
   registerButton.addEventListener("click", async () => {
+    const username = registerUserInput.value;
     const email = registerEmailInput.value;
     const password = registerPasswordInput.value;
 
-    if (!email || !password) {
-      registerError.textContent = "Please enter both email and password";
+    if (!username || !email || !password) {
+      registerError.textContent = "Username, Email and Password is required";
       registerError.style.display = "block";
       return;
     }
@@ -123,7 +133,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ username, email, password }),
       });
 
       const data = await response.json();
@@ -239,19 +249,38 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   });
 
-  // Stop recording button handler
   stopButton.addEventListener("click", () => {
+    // Show video title container and hide other containers
+    videoTitleContainer.style.display = "block";
+    recordingContainer.style.display = "none";
+    loginContainer.style.display = "none";
+    registerContainer.style.display = "none";
+  });
+
+  // Video title submit button handler
+  videoTitleButton.addEventListener("click", () => {
+    const title = videoTitleInput.value.trim();
+
+    if (!title) {
+      videoTitleInputError.textContent = "Title is required";
+      videoTitleInputError.style.display = "block";
+      return;
+    }
+    
     setTimeout(() => {
       chrome.runtime.sendMessage({
         type: "stop-recording",
         target: "offscreen",
+        data: { title: title || null }
       });
     }, 500);
 
-    setTimeout(() => {
-      stopButton.style.display = "none";
-      startButton.style.display = "block";
-    }, 300);
+    // Reset and hide video title container
+    videoTitleInput.value = "";
+    videoTitleContainer.style.display = "none";
+    recordingContainer.style.display = "block";
+    stopButton.style.display = "none";
+    startButton.style.display = "block";
   });
 
   // Message listener

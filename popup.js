@@ -22,6 +22,8 @@ const videoTitleContainer = document.getElementById("videoTitleContainer");
 const videoTitleInput = document.getElementById("videoTitleInput");
 const videoTitleInputError = document.getElementById("videoTitleInputError");
 const videoTitleButton = document.getElementById("videoTitleButton");
+const alertContainer = document.getElementById("alertContainer");
+const alertButton = document.getElementById("alertButton");
 let permissionStatus = document.getElementById("permissionStatus");
 
 async function checkAuth() {
@@ -278,9 +280,16 @@ document.addEventListener("DOMContentLoaded", async () => {
     // Reset and hide video title container
     videoTitleInput.value = "";
     videoTitleContainer.style.display = "none";
-    recordingContainer.style.display = "block";
-    stopButton.style.display = "none";
-    startButton.style.display = "block";
+
+    // alert("You can access your meeting at: http://localhost:3001/dashboard");
+    alertContainer.style.display = "block";
+
+    alertButton.addEventListener("click", () => {
+      alertContainer.style.display = "none";
+      recordingContainer.style.display = "block";
+      stopButton.style.display = "none";
+      startButton.style.display = "block";
+    });
   });
 
   // Message listener

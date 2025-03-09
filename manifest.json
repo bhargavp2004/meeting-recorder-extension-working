@@ -1,5 +1,5 @@
 {
-  "name": "Simple Chrome Recorder",
+  "name": "Meeting Assistant",
   "description": "A powerful Chrome extension that simultaneously records tab audio and microphone input with advanced audio processing, including noise suppression, echo cancellation, and customizable gain control. Perfect for creating voiceovers, commentary, and capturing both system audio and voice input.",
   "version": "1.0",
   "manifest_version": 3,

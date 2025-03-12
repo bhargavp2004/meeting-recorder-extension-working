@@ -281,6 +281,7 @@ async function transcribeVideo(file) {
       },
       body: JSON.stringify({
         audio_url: audioUrl,
+        speaker_labels: true, // Enable speaker labels
         summarization: true, // Enable summarization
         summary_model: "informative", // Options: "informative", "conversational", "catchy"
         summary_type: "bullets"

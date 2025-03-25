@@ -3,21 +3,7 @@
 // Get button elements
 const startButton = document.getElementById("startRecord");
 const stopButton = document.getElementById("stopRecord");
-const loginContainer = document.getElementById("loginContainer");
 const recordingContainer = document.getElementById("recordingContainer");
-const emailInput = document.getElementById("email");
-const passwordInput = document.getElementById("password");
-const loginButton = document.getElementById("loginButton");
-const loginError = document.getElementById("loginError");
-const logoutButton = document.getElementById("logoutButton");
-const navigateToRegisterButton = document.getElementById("navigateToRegister");
-const navigateToLoginButton = document.getElementById("navigateToLogin");
-const registerButton = document.getElementById("registerButton");
-const registerContainer = document.getElementById("registerContainer");
-const registerError = document.getElementById("registerError");
-const registerUserInput = document.getElementById("reguser");
-const registerEmailInput = document.getElementById("regemail");
-const registerPasswordInput = document.getElementById("regpassword");
 const videoTitleContainer = document.getElementById("videoTitleContainer");
 const videoTitleInput = document.getElementById("videoTitleInput");
 const videoTitleInputError = document.getElementById("videoTitleInputError");
@@ -43,16 +29,11 @@ async function checkAuth() {
 async function updateUI() {
   const isAuthenticated = await checkAuth();
   if (isAuthenticated) {
-    loginContainer.style.display = "none";
     recordingContainer.style.display = "block";
-    registerContainer.style.display = "none";
     startButton.style.display = "block";
     videoTitleContainer.style.display = "none";
   } else {
-    loginContainer.style.display = "block";
-    recordingContainer.style.display = "none";
-    registerContainer.style.display = "none";
-    videoTitleContainer.style.display = "none";
+    chrome.tabs.create({ url: "http://localhost:3001/login" });
   }
 }
 
@@ -103,105 +84,6 @@ async function checkRecordingState() {
 
 document.addEventListener("DOMContentLoaded", async () => {
   await checkRecordingState();
-
-  navigateToRegisterButton.addEventListener("click", () => {
-    loginContainer.style.display = "none";
-    recordingContainer.style.display = "none";
-    registerContainer.style.display = "block";
-    videoTitleContainer.style.display = "none";
-  });
-
-  navigateToLoginButton.addEventListener("click", () => {
-    loginContainer.style.display = "block";
-    recordingContainer.style.display = "none";
-    registerContainer.style.display = "none";
-    videoTitleContainer.style.display = "none";
-  });
-
-  // Register button handler
-  registerButton.addEventListener("click", async () => {
-    const username = registerUserInput.value;
-    const email = registerEmailInput.value;
-    const password = registerPasswordInput.value;
-
-    if (!username || !email || !password) {
-      registerError.textContent = "Username, Email and Password is required";
-      registerError.style.display = "block";
-      return;
-    }
-
-    try {
-      const response = await fetch("http://localhost:3000/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ username, email, password }),
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        updateUI();
-        checkRecordingState();
-      } else {
-        registerError.textContent = data.message;
-        registerError.style.display = "block";
-      }
-    } catch (error) {
-      registerError.textContent = "Network error, try again later";
-      registerError.style.display = "block";
-    }
-  });
-
-  // Login button handler
-  loginButton.addEventListener("click", async () => {
-    const email = emailInput.value;
-    const password = passwordInput.value;
-
-    if (!email || !password) {
-      loginError.textContent = "Please enter both email and password";
-      loginError.style.display = "block";
-      return;
-    }
-
-    try {
-      const response = await fetch("http://localhost:3000/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ email, password }),
-      });
-
-      console.log("Response : ", response);
-
-      const data = await response.json();
-
-      if (response.ok) {
-        updateUI();
-        checkRecordingState();
-      } else {
-        loginError.textContent = "Invalid email or password";
-        loginError.style.display = "block";
-      }
-    } catch (error) {
-      loginError.textContent = "Network error, try again later";
-      loginError.style.display = "block";
-    }
-  });
-
-  // Logout button handler
-  logoutButton.addEventListener("click", async () => {
-    try {
-      await fetch("http://localhost:3000/logout", {
-        method: "GET",
-        credentials: "include",
-      });
-      updateUI();
-    }
-    catch (error) {
-      console.log(error);
-    }
-  });
 
   // Start recording button handler
   startButton.addEventListener("click", async () => {
@@ -255,8 +137,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     // Show video title container and hide other containers
     videoTitleContainer.style.display = "block";
     recordingContainer.style.display = "none";
-    loginContainer.style.display = "none";
-    registerContainer.style.display = "none";
   });
 
   // Video title submit button handler

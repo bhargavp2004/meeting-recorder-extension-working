@@ -59,9 +59,16 @@
     }
 
     /* Initially hide recording buttons, but keep their space */
-    #startRecord,
-    #stopRecord {
+    #startRecord {
       background: #4caf50;
+      color: white;
+      display: none;
+      /* Keep space occupied */
+      transition: visibility 0s 0.3s, opacity 0.3s ease-in-out;
+    }
+
+    #stopRecord {
+      background: #a00101;
       color: white;
       display: none;
       /* Keep space occupied */
@@ -119,37 +126,6 @@
 
   <div id="permissionStatus"></div>
 
-  <!-- Login Container -->
-  <div id="loginContainer" class="container">
-    <h2>Login</h2>
-    <div class="input-container">
-      <input type="email" id="email" placeholder="Enter email">
-      <input type="password" id="password" placeholder="Enter password">
-    </div>
-    <p id="loginError"></p>
-    <div class="button-container">
-      <button type="submit" id="loginButton" class="SubmitButton">Login</button>
-    </div>
-    <button id="navigateToRegister" class="btn mt-3" style="background-color:inherit; text-decoration:underline">Don't
-      have an account ?</button>
-  </div>
-
-  <!-- Register Container -->
-  <div id="registerContainer" class="container">
-    <h2>Register</h2>
-    <div class="input-container">
-      <input type="text" id="reguser" placeholder="Enter username">
-      <input type="email" id="regemail" placeholder="Enter email">
-      <input type="password" id="regpassword" placeholder="Enter password">
-    </div>
-    <p id="registerError" class="mt-3"></p>
-    <div class="button-container">
-      <button type="submit" id="registerButton" class="SubmitButton mt-3">Register</button>
-    </div>
-    <button id="navigateToLogin" class="btn mt-3" style="background-color:inherit; text-decoration:underline">Already
-      have an account ?</button>
-  </div>
-
   <!-- Video Title Container -->
   <div id="videoTitleContainer" class="container">
     <h3>Provide a Title for Video</h3>
@@ -167,11 +143,9 @@
     <div class="button-container">
       <button id="startRecord">Start Recording</button>
       <button id="stopRecord">Stop Recording</button>
-      <button id="logoutButton">Logout</button>
     </div>
   </div>
 
-  <!-- Alert Container -->
   <div id="alertContainer"
     style="display: none;" class="container">
     <p>You can access your meeting at:
@@ -181,7 +155,6 @@
       <button id="alertButton">OK</button>
     </div>
   </div>
-
   <script src="popup.js"></script>
 
 </body>

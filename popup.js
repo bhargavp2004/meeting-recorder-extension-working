@@ -84,7 +84,7 @@ async function checkRecordingState() {
 
 document.addEventListener("DOMContentLoaded", async () => {
   await checkRecordingState();
-
+  videoTitleContainer.style.display = "none";
   // Start recording button handler
   startButton.addEventListener("click", async () => {
     try {
